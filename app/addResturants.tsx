@@ -21,13 +21,11 @@ export default function AddRestaurant() {
 
   const pickImage = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [4, 3],
       quality: 1,
     });
-
-    console.log(result);
 
     if (!result.canceled) {
       const link = await uploadImageToCloudinary(result.assets[0]);
@@ -39,13 +37,11 @@ export default function AddRestaurant() {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (permission.granted) {
       let result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ["images"],
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [4, 3],
         quality: 1,
       });
-
-      console.log(result);
 
       if (!result.canceled) {
         const link = await uploadImageToCloudinary(result.assets[0]);
@@ -54,28 +50,24 @@ export default function AddRestaurant() {
     }
   };
 
-  const uploadImageToCloudinary = async (obj: any) => {
+  const uploadImageToCloudinary = async (asset: any) => {
     const cloudName = "dxc9gtsl2";
     const apiKey = "425621276711985";
     const apiSecret = "-BBUPHUpD0ylxw0nF1Jwfuw52as";
-
     const timestamp = Math.floor(Date.now() / 1000);
-    const signature = generateSignature(timestamp, apiSecret);
+    const signature = await generateSignature(timestamp, apiSecret);
 
     const formData = new FormData();
-    console.log("obj=>", obj);
 
     formData.append("file", {
-      uri: obj.uri,
-      name: obj.fileName,
-      type: obj.mimeType,
-    });
+      uri: asset.uri,
+      name: asset.fileName || `upload_${Date.now()}.jpg`,
+      type: asset.mimeType || "image/jpeg",
+    } as any);
 
     formData.append("api_key", apiKey);
     formData.append("timestamp", timestamp.toString());
-    formData.append("signature", await signature);
-
-    console.log("formData=>", formData);
+    formData.append("signature", signature);
 
     const response = await fetch(
       `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
@@ -88,22 +80,21 @@ export default function AddRestaurant() {
     const data = await response.json();
 
     if (response.ok) {
-      console.log("data=>", data.secure_url);
       return data.secure_url;
     } else {
-      console.log("error=>", data.error.message);
-      return data.error.message;
+      console.log("Upload Error:", data.error.message);
+      return null;
     }
   };
-  async function generateSignature(timestamp: any, apiSecret: any) {
+
+  const generateSignature = async (timestamp: number, apiSecret: string) => {
     const signatureString = `timestamp=${timestamp}${apiSecret}`;
     const digest = await Crypto.digestStringAsync(
       Crypto.CryptoDigestAlgorithm.SHA256,
       signatureString
     );
-
     return digest;
-  }
+  };
 
   return (
     <ThemedView>
@@ -161,20 +152,17 @@ export default function AddRestaurant() {
               title="Open Camera"
               onPress={() => {
                 pickImageFromCamera();
-                setModalVisible(false); // Close modal after selecting
+                setModalVisible(false);
               }}
             />
             <Button
               title="Open Library"
               onPress={() => {
                 pickImage();
-                setModalVisible(false); // Close modal after selecting
+                setModalVisible(false);
               }}
             />
-            <Button
-              title="Cancel"
-              onPress={() => setModalVisible(false)} // Close modal
-            />
+            <Button title="Cancel" onPress={() => setModalVisible(false)} />
           </View>
         </View>
       </Modal>
